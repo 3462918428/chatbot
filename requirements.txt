@@ -1,0 +1,2 @@
+requests>=2.28.2
+python-dotenv>=0.19.0  # 用于本地测试时加载 .env 文件中的环境变量

@@ -1,0 +1,41 @@
+# .github/workflows/daily_message.yml
+
+name: Send Daily Message
+
+on:
+  schedule:
+    # 设置定时执行的时间，使用 Cron 表达式
+    # 例如，每天早上 8 点执行 (UTC 时间，需要换算成北京时间，例如北京时间早上8点是UTC时间0点)
+    - cron: '30 22 * * *' # 每天 UTC 22:30 执行（对应北京时间6:30）
+  workflow_dispatch: # 允许手动触发
+
+jobs:
+  build-and-send:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
+
+    - name: Install dependencies
+      run: pip install -r requirements.txt
+
+
+
+    - name: Run script
+      env:
+        # 从 GitHub Secrets 中读取配置信息并设置为环境变量
+        # 你需要在 GitHub 仓库的 Settings -> Secrets and variables -> Actions 中添加这些 Secrets
+        START_DATE: ${{ secrets.START_DATE }}
+        CITY: ${{ secrets.CITY }}
+        WEATHER_API_KEY: ${{ secrets.WEATHER_API_KEY }}
+        APP_ID: ${{ secrets.APP_ID }}
+        APP_SECRET: ${{ secrets.APP_SECRET }}
+        TEMPLATE_ID: ${{ secrets.TEMPLATE_ID }}
+        USER_ID: ${{ secrets.USER_ID }}
+      run: python main.py
