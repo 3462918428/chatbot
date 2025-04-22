@@ -1,10 +1,22 @@
 # main.py
 import os
 import datetime
-from config import START_DATE, CITY, WEATHER_API_KEY, APP_ID, APP_SECRET, TEMPLATE_ID, USER_ID
+import config  # 导入config模块，但稍后会优先使用环境变量
+from date_utils import get_days_until
 from weather import get_weather
 from wechat import get_access_token, send_template_message
 from schedule import Schedule
+
+# 从环境变量或配置文件获取配置
+START_DATE = os.getenv("START_DATE", config.START_DATE)
+CITY = os.getenv("CITY", config.CITY)
+WEATHER_API_KEY = os.getenv("WEATHER_API_KEY", config.WEATHER_API_KEY)
+APP_ID = os.getenv("APP_ID", config.APP_ID)
+APP_SECRET = os.getenv("APP_SECRET", config.APP_SECRET)
+TEMPLATE_ID = os.getenv("TEMPLATE_ID", config.TEMPLATE_ID)
+USER_ID = os.getenv("USER_ID", config.USER_ID)
+BIRTHDAY_SOLAR = os.getenv("BIRTHDAY_SOLAR", config.BIRTHDAY_SOLAR)
+BIRTHDAY_LUNAR = os.getenv("BIRTHDAY_LUNAR", config.BIRTHDAY_LUNAR)
 
 def calculate_days_together(start_date_str):
     """计算恋爱天数"""
@@ -14,8 +26,22 @@ def calculate_days_together(start_date_str):
     return delta.days
 
 def main():
+    # 输出当前使用的配置
+    print(f"[配置信息] 当前使用的模板ID: {TEMPLATE_ID}")
+    print(f"[配置信息] 当前目标城市: {CITY}")
+    print(f"[配置信息] 当前用户ID: {USER_ID}")
+    
     # 计算恋爱天数
-    days_together = calculate_days_together(START_DATE)
+    # 计算纪念日
+    start_date = datetime.datetime.strptime(START_DATE, "%Y-%m-%d").date()
+    today = datetime.date.today()
+    days_together = (today - start_date).days
+
+    # 计算生日倒计时
+    solar_month, solar_day = map(int, BIRTHDAY_SOLAR.split('-'))
+    lunar_month, lunar_day = map(int, BIRTHDAY_LUNAR.split('-'))
+    days_until_solar = get_days_until(solar_month, solar_day)
+    days_until_lunar = get_days_until(lunar_month, lunar_day, is_lunar=True)
 
     # 获取天气信息
     weather_data = get_weather(CITY, WEATHER_API_KEY)
@@ -36,13 +62,17 @@ def main():
     # 获取当天课程信息
     schedule = Schedule()
     today_schedule = schedule.get_today_schedule()
-    courses = ', '.join(today_schedule) if today_schedule else '无课程安排'
+    courses = '今日课程：' + (', '.join(today_schedule) if today_schedule else '无课程安排')
+
+    # 调试输出课程信息
+    print(f'[调试] 当天课程表数据: {today_schedule}')
+    print(f'[调试] 格式化后的课程信息: {courses}')
 
     # 准备模板消息数据
     data = {
         "touser": USER_ID,
         "template_id": TEMPLATE_ID,
-        "url": "http://weixin.qq.com/download",  # 点击模板消息后跳转的链接，可不填
+        "url": "http://weixin.qq.com/download",
         "topcolor": "#FF0000",
         "data": {
             "date": {
@@ -69,12 +99,16 @@ def main():
                 "value": str(weather_data.get('feels_like', 'N/A')) + "°C",
                 "color": "#D35400"
             },
-            "courses": {
-                "value": courses if courses else "今天没有课程安排哦~",
-                "color": "#3498DB"
+            "birthday_solar": {
+                "value": f"{days_until_solar}天",
+                "color": "#FF69B4"
+            },
+            "birthday_lunar": {
+                "value": f"{days_until_lunar}天",
+                "color": "#BA55D3"
             },
             "tips": {
-                "value": weather_data.get('tips', '今天也要开心呀！'),
+                "value": weather_data.get('tips', '今天也要开心呀！') + "\n\n" + courses,
                 "color": "#16A085"
             }
         }
@@ -82,6 +116,7 @@ def main():
 
     # 发送模板消息
     try:
+        print(f"[调试] 准备发送消息，使用的模板ID: {data['template_id']}")
         success = send_template_message(access_token, data)
         if success:
             print("模板消息发送成功")
@@ -91,28 +126,13 @@ def main():
         print(f"发送模板消息时发生错误: {e}")
 
 if __name__ == "__main__":
-    # 从 GitHub Actions 的环境变量中读取配置信息
-    # 本地测试时，可以取消注释下一行，并确保 config.py 中有默认值或使用 .env 文件
-    # from dotenv import load_dotenv
-    # load_dotenv()
-
-    # 优先从环境变量获取配置，如果环境变量没有，则使用 config.py 中的默认值
-    start_date = os.getenv("START_DATE", START_DATE)
-    city = os.getenv("CITY", CITY)
-    weather_api_key = os.getenv("WEATHER_API_KEY", WEATHER_API_KEY)
-    app_id = os.getenv("APP_ID", APP_ID)
-    app_secret = os.getenv("APP_SECRET", APP_SECRET)
-    template_id = os.getenv("TEMPLATE_ID", TEMPLATE_ID)
-    user_id = os.getenv("USER_ID", USER_ID)
-
-    # 更新配置变量，以便后续函数使用最新的值
-    START_DATE = start_date
-    CITY = city
-    WEATHER_API_KEY = weather_api_key
-    APP_ID = app_id
-    APP_SECRET = app_secret
-    TEMPLATE_ID = template_id
-    USER_ID = user_id
+    # 尝试加载.env文件中的环境变量（如果存在）
+    try:
+        from dotenv import load_dotenv
+        load_dotenv()
+        print("成功加载.env文件")
+    except ImportError:
+        print(".env文件加载失败，请确保安装了python-dotenv或环境变量已设置")
 
     # 校验必要的配置是否存在
     required_configs = {
@@ -129,6 +149,6 @@ if __name__ == "__main__":
 
     if missing_configs:
         print(f"错误：缺少必要的配置信息: {', '.join(missing_configs)}")
-        print("请检查环境变量或 config.py 文件。")
+        print("请检查环境变量、.env文件或config.py文件。")
     else:
         main()

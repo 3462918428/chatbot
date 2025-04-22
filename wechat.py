@@ -6,6 +6,7 @@ def get_access_token(app_id, app_secret):
     """获取微信公众号全局唯一后台接口调用凭据（access_token）"""
     url = f"https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid={app_id}&secret={app_secret}"
     try:
+        print(f"[调试] 正在获取access_token，AppID: {app_id[:5]}...")
         response = requests.get(url)
         response.raise_for_status() # 检查请求是否成功
         data = response.json()
@@ -30,9 +31,15 @@ def send_template_message(access_token, data):
     url = f"https://api.weixin.qq.com/cgi-bin/message/template/send?access_token={access_token}"
     headers = {'Content-Type': 'application/json'}
     try:
+        print(f"[调试] 准备发送模板消息，模板ID: {data['template_id']}")
+        print(f"[调试] 发送的数据: {json.dumps(data, ensure_ascii=False)}")
+        
         response = requests.post(url, headers=headers, data=json.dumps(data))
         response.raise_for_status()
         result = response.json()
+        
+        print(f"[调试] 微信API返回结果: {result}")
+        
         if result.get('errcode') == 0:
             print("模板消息 API 调用成功")
             return True
