@@ -1,5 +1,5 @@
-# 忽略实际配置文件
-config.py
+# 不再忽略config.py，但请确保不要提交真实的API密钥和敏感信息
+# config.py
 .env
 
 # 忽略Python缓存文件

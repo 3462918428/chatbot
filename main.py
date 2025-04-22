@@ -14,7 +14,8 @@ WEATHER_API_KEY = os.getenv("WEATHER_API_KEY", config.WEATHER_API_KEY)
 APP_ID = os.getenv("APP_ID", config.APP_ID)
 APP_SECRET = os.getenv("APP_SECRET", config.APP_SECRET)
 TEMPLATE_ID = os.getenv("TEMPLATE_ID", config.TEMPLATE_ID)
-USER_ID = os.getenv("USER_ID", config.USER_ID)
+# 用户ID可以是单个值或逗号分隔的列表
+USER_IDS = os.getenv("USER_ID", config.USER_ID).split(',')
 BIRTHDAY_SOLAR = os.getenv("BIRTHDAY_SOLAR", config.BIRTHDAY_SOLAR)
 BIRTHDAY_LUNAR = os.getenv("BIRTHDAY_LUNAR", config.BIRTHDAY_LUNAR)
 
@@ -29,7 +30,7 @@ def main():
     # 输出当前使用的配置
     print(f"[配置信息] 当前使用的模板ID: {TEMPLATE_ID}")
     print(f"[配置信息] 当前目标城市: {CITY}")
-    print(f"[配置信息] 当前用户ID: {USER_ID}")
+    print(f"[配置信息] 用户数量: {len(USER_IDS)}")
     
     # 计算恋爱天数
     # 计算纪念日
@@ -49,16 +50,6 @@ def main():
         print("获取天气信息失败")
         return
 
-    # 获取微信 Access Token
-    try:
-        access_token = get_access_token(APP_ID, APP_SECRET)
-        if not access_token:
-            print("获取 Access Token 失败")
-            return
-    except Exception as e:
-        print(f"获取 Access Token 时发生错误: {e}")
-        return
-
     # 获取当天课程信息
     schedule = Schedule()
     today_schedule = schedule.get_today_schedule()
@@ -68,9 +59,8 @@ def main():
     print(f'[调试] 当天课程表数据: {today_schedule}')
     print(f'[调试] 格式化后的课程信息: {courses}')
 
-    # 准备模板消息数据
-    data = {
-        "touser": USER_ID,
+    # 准备模板消息数据的基本结构（不包含用户ID）
+    data_template = {
         "template_id": TEMPLATE_ID,
         "url": "http://weixin.qq.com/download",
         "topcolor": "#FF0000",
@@ -114,16 +104,42 @@ def main():
         }
     }
 
-    # 发送模板消息
+    # 获取微信 Access Token
     try:
-        print(f"[调试] 准备发送消息，使用的模板ID: {data['template_id']}")
-        success = send_template_message(access_token, data)
-        if success:
-            print("模板消息发送成功")
-        else:
-            print("模板消息发送失败")
+        access_token = get_access_token(APP_ID, APP_SECRET)
+        if not access_token:
+            print("获取 Access Token 失败")
+            return
     except Exception as e:
-        print(f"发送模板消息时发生错误: {e}")
+        print(f"获取 Access Token 时发生错误: {e}")
+        return
+
+    # 对每个用户发送消息
+    success_count = 0
+    for user_id in USER_IDS:
+        user_id = user_id.strip()  # 去除可能的空格
+        if not user_id:
+            continue  # 跳过空用户ID
+            
+        print(f"[调试] 准备向用户 {user_id} 发送消息")
+        
+        # 为当前用户准备数据
+        data = data_template.copy()
+        data["touser"] = user_id
+        
+        # 发送模板消息
+        try:
+            print(f"[调试] 准备发送消息，使用的模板ID: {data['template_id']}")
+            success = send_template_message(access_token, data)
+            if success:
+                print(f"向用户 {user_id} 的模板消息发送成功")
+                success_count += 1
+            else:
+                print(f"向用户 {user_id} 的模板消息发送失败")
+        except Exception as e:
+            print(f"向用户 {user_id} 发送模板消息时发生错误: {e}")
+    
+    print(f"消息发送完成，成功: {success_count}/{len(USER_IDS)}")
 
 if __name__ == "__main__":
     # 尝试加载.env文件中的环境变量（如果存在）
@@ -142,7 +158,7 @@ if __name__ == "__main__":
         "APP_ID": APP_ID,
         "APP_SECRET": APP_SECRET,
         "TEMPLATE_ID": TEMPLATE_ID,
-        "USER_ID": USER_ID
+        "USER_ID": USER_IDS
     }
 
     missing_configs = [key for key, value in required_configs.items() if not value]

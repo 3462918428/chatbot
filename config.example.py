@@ -20,9 +20,10 @@ APP_SECRET = "你的微信公众号AppSecret"
 # 在微信公众平台 -> 功能 -> 模板消息 中申请，审核通过后获得
 TEMPLATE_ID = "你的微信模板消息ID"
 
-# 接收消息的用户（女朋友）的微信 OpenID
+# 接收消息的用户的微信 OpenID
 # 需要用户关注你的公众号，并在公众号后台 -> 用户管理 中查看其 OpenID
-USER_ID = "接收消息的微信用户OpenID"
+# 支持多用户，用逗号分隔多个OpenID
+USER_ID = "用户1的OpenID,用户2的OpenID"
 
 # 生日配置（阳历和农历）
 BIRTHDAY_SOLAR = "MM-DD"  # 阳历生日：月-日
