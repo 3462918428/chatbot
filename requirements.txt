@@ -1,3 +1,7 @@
 requests==2.31.0
 lunardate==0.2.2
+<<<<<<< HEAD
 python-dotenv==1.0.0
+=======
+python-dotenv==1.0.0
+>>>>>>> 3704e43d022af1fb90a90e27fecf31a5395cd8df
